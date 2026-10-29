@@ -246,6 +246,15 @@ public sealed partial class KoronusSectorRuleSystem : GameRuleSystem<KoronusSect
 
     private bool HasResidentMind(string systemId, MapId mapId)
     {
+        // A departed dungeon ship can be empty while survivors are still collecting loot.
+        // Keep that grid's identity valid until their extraction window has closed.
+        var returnShips = AllEntityQuery<Content.Server._WH40K.ChaosDungeon.ChaosDungeonShipComponent, TransformComponent>();
+        while (returnShips.MoveNext(out _, out var ship, out var transform))
+        {
+            if (ship.ReturnPending && transform.MapID == mapId)
+                return true;
+        }
+
         // Deleting and restoring a map cannot preserve live mind references to its entities.
         // Disconnected bodies and entities visited by a mind may sleep, but must stay in memory.
         // Surface explorers also depend on orbital entity identities for their return ship and deed.
@@ -805,15 +814,17 @@ public sealed partial class KoronusSectorRuleSystem : GameRuleSystem<KoronusSect
     private bool IsInitialGridPositionClear(
         KoronusSystemPrototype system,
         Vector2 position,
-        float facilityRadius)
+        float facilityRadius,
+        bool includeRandomBodies = false)
     {
         foreach (var body in _prototypes.EnumeratePrototypes<KoronusCelestialBodyPrototype>())
         {
             // Random bodies are placed after the facility and will avoid it themselves.
-            if (body.System != system.ID || body.RandomizePositionAngle)
+            if (body.System != system.ID || body.RandomizePositionAngle && !includeRandomBodies)
                 continue;
 
-            var bodyPosition = GetCelestialBodyPosition(system, body, body.OrbitPhase);
+            var angle = includeRandomBodies ? GetCelestialBodyPositionAngle(system, body) : body.OrbitPhase;
+            var bodyPosition = GetCelestialBodyPosition(system, body, angle);
             var clearance = facilityRadius + GetBodyPlacementRadius(body) + ObjectPlacementPadding;
             if (Vector2.DistanceSquared(position, bodyPosition) <= clearance * clearance)
                 return false;
