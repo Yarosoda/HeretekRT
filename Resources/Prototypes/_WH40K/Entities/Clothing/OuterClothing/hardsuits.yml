@@ -4,6 +4,7 @@
 - type: entity
   parent: [ClothingOuterBase, GeigerCounterClothing, AllowSuitStorageClothing]
   id: ClothingOuterHardsuitVoidsmanStandard
+  categories: [ HideSpawnMenu ]
   suffix: WH40K, войдсмены
   components:
   - type: Sprite
@@ -21,12 +22,12 @@
   - type: Armor
     modifiers:
       coefficients:
-        Blunt: 0.7
-        Slash: 0.65
-        Piercing: 0.65
-        Radiation: 0.65
-        Caustic: 0.65
-        Heat: 0.85
+        Blunt: 0.5
+        Slash: 0.5
+        Piercing: 0.5
+        Radiation: 0.5
+        Caustic: 0.5
+        Heat: 0.5
   - type: ItemDurability
     maxDurability: 480
     protectsWearer: true
@@ -51,6 +52,7 @@
 - type: entity
   parent: ClothingOuterHardsuitVoidsmanStandard
   id: ClothingOuterHardsuitVoidsmanOfficer
+  categories: [ HideSpawnMenu ]
   suffix: WH40K, войдсмены
   components:
   - type: Sprite
@@ -71,9 +73,9 @@
         Blunt: 0.55
         Slash: 0.5
         Piercing: 0.55
-        Radiation: 0.4
-        Caustic: 0.4
-        Heat: 0.8
+        Radiation: 0.5
+        Caustic: 0.5
+        Heat: 0.5
   - type: ClothingSpeedModifier
     walkModifier: 0.80
     sprintModifier: 0.80
@@ -83,6 +85,7 @@
 - type: entity
   parent: ClothingOuterHardsuitVoidsmanStandard
   id: ClothingOuterHardsuitVoidsmanSergeant
+  categories: [ HideSpawnMenu ]
   suffix: WH40K, войдсмены
   components:
   - type: Sprite
@@ -100,12 +103,12 @@
   - type: Armor
     modifiers:
       coefficients:
-        Blunt: 0.65
-        Slash: 0.6
-        Piercing: 0.6
-        Radiation: 0.75
-        Caustic: 0.75
-        Heat: 0.9
+        Blunt: 0.5
+        Slash: 0.5
+        Piercing: 0.5
+        Radiation: 0.5
+        Caustic: 0.5
+        Heat: 0.5
   - type: ClothingSpeedModifier
     walkModifier: 0.80
     sprintModifier: 0.80
@@ -114,6 +117,7 @@
 - type: entity
   parent: ClothingOuterHardsuitVoidsmanStandard
   id: ClothingOuterHardsuitVoidsmanGrenadier
+  categories: [ HideSpawnMenu ]
   suffix: WH40K, войдсмены
   components:
   - type: Sprite
@@ -125,12 +129,12 @@
   - type: Armor
     modifiers:
       coefficients:
-        Blunt: 0.65
-        Slash: 0.6
-        Piercing: 0.6
-        Radiation: 0.5
-        Caustic: 0.5
-        Heat: 0.85
+        Blunt: 0.4
+        Slash: 0.4
+        Piercing: 0.3
+        Radiation: 0.4
+        Caustic: 0.4
+        Heat: 0.4
 
 # техножречество
 
