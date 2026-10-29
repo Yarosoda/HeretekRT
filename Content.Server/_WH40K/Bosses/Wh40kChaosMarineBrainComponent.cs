@@ -20,7 +20,6 @@ public sealed partial class Wh40kChaosMarineBrainComponent : Component
     [ViewVariables] public int WavesQueued;
     [ViewVariables] public int WavesDone;
     [ViewVariables] public int PendingWave;
-    [ViewVariables] public int PendingSummonCount;
     [ViewVariables] public int RangedSeries;
     [ViewVariables] public int CancellationSequence;
     [ViewVariables] public MarineAttack Previous;
@@ -84,7 +83,7 @@ public sealed partial class Wh40kChaosMarineBrainComponent : Component
     [DataField(customTypeSerializer: typeof(TimeOffsetSerializer)), AutoPausedField] public TimeSpan NextKillVoice;
 }
 
-public readonly record struct MarineSpawn(EntityUid Circle, string Prototype, EntityCoordinates Center, TimeSpan At, int Wave, int TypeIndex, int Count);
+public readonly record struct MarineSpawn(EntityUid Circle, string Prototype, EntityCoordinates Center, TimeSpan At, int Wave, int TypeIndex);
 public readonly record struct MarineSeal(EntityUid Effect, EntityCoordinates Position);
 
 [RegisterComponent, AutoGenerateComponentPause]

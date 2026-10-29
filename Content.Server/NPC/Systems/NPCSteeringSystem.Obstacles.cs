@@ -37,8 +37,7 @@ public sealed partial class NPCSteeringSystem
      */
 
 
-    private SteeringObstacleStatus TryHandleFlags(EntityUid uid, NPCSteeringComponent component, PathPoly poly,
-        List<EntityUid>? obstacleEnts = null)
+    private SteeringObstacleStatus TryHandleFlags(EntityUid uid, NPCSteeringComponent component, PathPoly poly)
     {
         DebugTools.Assert(!poly.Data.IsFreeSpace);
         // TODO: Store PathFlags on the steering comp
@@ -74,11 +73,9 @@ public sealed partial class NPCSteeringSystem
                     return SteeringObstacleStatus.Failed;
             }
 
-            if (obstacleEnts == null)
-            {
-                obstacleEnts = new List<EntityUid>();
-                GetObstacleEntities(poly, mask, layer, obstacleEnts);
-            }
+            var obstacleEnts = new List<EntityUid>();
+
+            GetObstacleEntities(poly, mask, layer, obstacleEnts);
             var isDoor = (poly.Data.Flags & PathfindingBreadcrumbFlag.Door) != 0x0;
             var isAccessRequired = (poly.Data.Flags & PathfindingBreadcrumbFlag.Access) != 0x0;
             var isClimbable = (poly.Data.Flags & PathfindingBreadcrumbFlag.Climb) != 0x0;
@@ -205,14 +202,12 @@ public sealed partial class NPCSteeringSystem
     private void GetObstacleEntities(PathPoly poly, int mask, int layer, List<EntityUid> ents)
     {
         // TODO: Can probably re-use this from pathfinding or something
-        if (!HasComp<MapGridComponent>(poly.GraphUid))
+        if (!TryComp<MapGridComponent>(poly.GraphUid, out var grid))
         {
             return;
         }
 
-        var obstacles = new HashSet<EntityUid>();
-        _lookup.GetLocalEntitiesIntersecting(poly.GraphUid, poly.Box, obstacles, LookupFlags.Static);
-        foreach (var ent in obstacles)
+        foreach (var ent in _mapSystem.GetLocalAnchoredEntities(poly.GraphUid, grid, poly.Box))
         {
             if (!_physicsQuery.TryGetComponent(ent, out var body) ||
                 !body.Hard ||

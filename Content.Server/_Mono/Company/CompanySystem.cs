@@ -5,15 +5,15 @@ using Content.Shared.GameTicking;
 using Content.Shared.Inventory;
 using Content.Shared.PDA;
 using Content.Shared.Roles;
-using Robust.Server.Player;
-using Robust.Shared.Network;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
 
 namespace Content.Server._Mono.Company;
 
 /// <summary>
-/// Applies account faction membership to spawned and reattached characters.
+/// This system handles assigning a company to players when they join.
+/// TODO: remove hardcoded slop.
+/// whoever hardcoded ts is getting slimed out no joke.
 /// </summary>
 public sealed partial class CompanySystem : EntitySystem
 {
@@ -21,7 +21,9 @@ public sealed partial class CompanySystem : EntitySystem
     [Dependency] private SharedIdCardSystem _idCardSystem = default!;
     [Dependency] private InventorySystem _inventorySystem = default!;
     [Dependency] private CompanyManager _manager = default!;
-    [Dependency] private IPlayerManager _players = default!;
+
+    // Dictionary to store original company preferences for players
+    private readonly Dictionary<string, string> _playerOriginalCompanies = new();
 
     public override void Initialize()
     {
@@ -30,51 +32,68 @@ public sealed partial class CompanySystem : EntitySystem
         // Subscribe to player spawn event to add the company component
         SubscribeLocalEvent<PlayerSpawnCompleteEvent>(OnPlayerSpawnComplete);
 
-        SubscribeLocalEvent<PlayerAttachedEvent>(OnPlayerAttached);
-        _manager.FactionChanged += OnFactionChanged;
+        // Subscribe to player detached event to clean up stored preferences
+        SubscribeLocalEvent<PlayerDetachedEvent>(OnPlayerDetached);
     }
 
-    public override void Shutdown()
+    private void OnPlayerDetached(PlayerDetachedEvent args)
     {
-        _manager.FactionChanged -= OnFactionChanged;
-        base.Shutdown();
-    }
-
-    private void OnPlayerAttached(PlayerAttachedEvent args)
-    {
-        if (_manager.Ready.IsCompletedSuccessfully)
-            SynchronizeMembership(args.Player.UserId, args.Entity);
-    }
-
-    private void OnFactionChanged(ProtoId<CompanyPrototype> faction, NetUserId player)
-    {
-        if (_players.TryGetSessionById(player, out var session) && session.AttachedEntity is { } entity)
-            SynchronizeMembership(player, entity);
-    }
-
-    private void SynchronizeMembership(NetUserId player, EntityUid entity)
-    {
-        if (!TryComp<CompanyComponent>(entity, out var component))
-            return;
-        var faction = _manager.GetCharacterFaction(player, component.CompanyName.Id);
-        if (component.CompanyName != faction)
-            SetFaction(entity, faction);
+        // Clean up stored preferences when player disconnects
+        _playerOriginalCompanies.Remove(args.Player.UserId.ToString());
     }
 
     private void OnPlayerSpawnComplete(PlayerSpawnCompleteEvent args)
     {
+        // Add the company component with the player's saved company
         var companyComp = EnsureComp<CompanyComponent>(args.Mob);
-        var membership = _manager.GetActiveFaction(args.Player.UserId, args.Profile.Company);
-        var company = _manager.GetCharacterFaction(args.Player.UserId, args.Profile.Company);
-        if (!_manager.IsAllowed(args.Player, company))
-            company = "None";
-        if (membership == null && args.JobId != null)
+
+        var playerId = args.Player.UserId.ToString();
+        var profileCompany = args.Profile.Company;
+
+        // Store the player's original company preference if not already stored
+        if (!_playerOriginalCompanies.ContainsKey(playerId))
+        {
+            _playerOriginalCompanies[playerId] = profileCompany;
+        }
+
+        var assigned = false;
+        if (args.JobId != null)
         {
             var job = _prototypeManager.Index<JobPrototype>(args.JobId);
-            if (job.AssignedCompany != "None" && _manager.IsAllowed(args.Player, job.AssignedCompany))
-                company = job.AssignedCompany.Id;
+            companyComp.CompanyName = job.AssignedCompany;
+            assigned = companyComp.CompanyName != "None";
         }
-        companyComp.CompanyName = company;
+        if (!assigned)
+        {
+            // Only consider whitelist if the player has NO specific company preference
+            bool loginFound = false;
+
+            // Only check logins if the player hasn't explicitly set a company preference
+            // or if their preference is "None"
+            if (string.IsNullOrEmpty(profileCompany))
+            {
+                foreach (var companyProto in _prototypeManager.EnumeratePrototypes<CompanyPrototype>())
+                {
+                    if (_manager.IsAllowed(args.Player, companyProto))
+                    {
+                        companyComp.CompanyName = companyProto.ID;
+                        loginFound = true;
+                        break;
+                    }
+                }
+            }
+
+            // If no login was found or login check was skipped due to player preference, use the player's preference
+            if (!loginFound)
+            {
+                // Use "None" as fallback for empty company
+                if (string.IsNullOrEmpty(profileCompany))
+                    profileCompany = "None";
+
+                // Restore the player's original company preference
+                companyComp.CompanyName = profileCompany;
+            }
+        }
 
         // Ensure the component is networked to clients
         Dirty(args.Mob, companyComp);
@@ -104,13 +123,5 @@ public sealed partial class CompanySystem : EntitySystem
         {
             _idCardSystem.TryChangeCompanyName(cardId, companyName, idCard);
         }
-    }
-
-    public void SetFaction(EntityUid player, ProtoId<CompanyPrototype> faction)
-    {
-        var component = EnsureComp<CompanyComponent>(player);
-        component.CompanyName = faction;
-        Dirty(player, component);
-        UpdateIdCardCompany(player, faction.Id);
     }
 }

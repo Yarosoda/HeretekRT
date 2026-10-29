@@ -445,7 +445,7 @@
   - type: Projectile
     damage:
       types:
-        Piercing: 28
+        Piercing: 18
   - type: StunOnCollide
     stunAmount: 0
     knockdownAmount: 0
@@ -636,7 +636,7 @@
   - type: Projectile
     damage:
       types:
-        Piercing: 24
+        Piercing: 16
   - type: StunOnCollide
     stunAmount: 0
     knockdownAmount: 0
@@ -653,7 +653,7 @@
   - type: Projectile
     damage:
       types:
-        Piercing: 27
+        Piercing: 19
   - type: StunOnCollide
     stunAmount: 0
     knockdownAmount: 0
@@ -670,7 +670,7 @@
   - type: Projectile
     damage:
       types:
-        Piercing: 30
+        Piercing: 35
   - type: StunOnCollide
     stunAmount: 0
     knockdownAmount: 0

@@ -41,8 +41,6 @@ public sealed partial class RespawnSystem : EntitySystem
         public TimeSpan RespawnTime; // The next time the user can respawn.
         public TimeSpan? LastCryoSleep; // The last time the user entered cryosleep.
         public TimeSpan? LastRespawnFromCryosleep; // The last time the user respawned after entering cryosleep.
-        public EntityUid? LastBody;
-        public EntityUid? PreviousBody;
     }
     // End Frontier
 
@@ -68,13 +66,21 @@ public sealed partial class RespawnSystem : EntitySystem
     private void OnRespawnCryoFirstTimeChanged(float value)
     {
         _baseRespawnTimeOnFirstCryo = value;
-        _respawnTimeOnFirstCryo = _baseRespawnTimeOnFirstCryo * (_ticker.CurrentPreset?.RespawnMultiplier ?? 1f);
+        if (_ticker.CurrentPreset != null)
+        {
+            _respawnTimeOnFirstCryo = _baseRespawnTimeOnFirstCryo * _ticker.CurrentPreset.RespawnMultiplier;
+            _respawnTime = _baseRespawnTime * _ticker.CurrentPreset.RespawnMultiplier;
+        }
     }
 
     private void OnRespawnCryoTimeChanged(float value)
     {
         _baseRespawnTime = value;
-        _respawnTime = _baseRespawnTime * (_ticker.CurrentPreset?.RespawnMultiplier ?? 1f);
+        if (_ticker.CurrentPreset != null)
+        {
+            _respawnTimeOnFirstCryo = _baseRespawnTimeOnFirstCryo * _ticker.CurrentPreset.RespawnMultiplier;
+            _respawnTime = _baseRespawnTime * _ticker.CurrentPreset.RespawnMultiplier;
+        }
     }
     // End Frontier
 
@@ -185,33 +191,6 @@ public sealed partial class RespawnSystem : EntitySystem
     public TimeSpan? GetRespawnTime(NetUserId user) // Frontier: GetRespawnResetTime<GetRespawnTime
     {
         return _respawnInfo.TryGetValue(user, out var data) ? data.RespawnTime : null;
-    }
-
-    public bool CanRespawn(ICommonSession session)
-    {
-        return _admin.IsAdmin(session)
-            || GetRespawnTime(session.UserId) is not { } nextSpawn
-            || _timing.CurTime >= nextSpawn;
-    }
-
-    public void OnPlayerSpawned(ICommonSession session, EntityUid body)
-    {
-        Respawn(session);
-        var data = GetRespawnData(session.UserId);
-        if (data.LastBody == body)
-            return;
-
-        // Preserve the latest abandoned body so its inventory can still be recovered.
-        var obsoleteBody = data.PreviousBody;
-        data.PreviousBody = data.LastBody;
-        data.LastBody = body;
-
-        if (obsoleteBody is not { } obsolete || obsolete == body || !Exists(obsolete)
-            || HasComp<ActorComponent>(obsolete)
-            || TryComp<MindContainerComponent>(obsolete, out var mind) && mind.HasMind)
-            return;
-
-        QueueDel(obsolete);
     }
 
     // Frontier: return a writable reference

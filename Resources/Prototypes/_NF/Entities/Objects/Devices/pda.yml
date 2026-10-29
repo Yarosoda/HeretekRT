@@ -16,7 +16,6 @@
     preinstalled:
       - Wh40kPlayerCartridge
       - Wh40kPartyCartridge
-      - Wh40kFactionCartridge
       - Wh40kClassCartridge
       - CrewManifestCartridge
       - NotekeeperCartridge
@@ -146,7 +145,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -320,7 +318,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -390,13 +387,12 @@
         !type:String
         pda-cmo
   - type: Icon
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _NF/Objects/Devices/pda.rsi
     state: pda-cmo
   - type: CartridgeLoader
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge

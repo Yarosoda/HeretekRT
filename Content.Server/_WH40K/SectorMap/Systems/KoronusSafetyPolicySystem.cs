@@ -3,7 +3,6 @@ using Content.Server._WH40K.Progression;
 using Content.Server._WH40K.ClassProgression;
 using Content.Server._WH40K.Localizations;
 using Content.Server._WH40K.OperationalDomain;
-using Content.Server.Carrying;
 using Content.Server._WH40K.SectorMap.Components;
 using Content.Server.Atmos.Components;
 using Content.Server.Fluids.Components;
@@ -35,11 +34,9 @@ using Content.Shared.Construction.Components;
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
 using Content.Shared.Flash;
-using Content.Shared.Ghost;
 using Content.Shared.Mind.Components;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Movement.Pulling.Components;
-using Content.Shared.Movement.Pulling.Systems;
 using Content.Shared.NPC.Components;
 using Content.Shared.NPC.Systems;
 using Content.Shared.Nutrition;
@@ -99,7 +96,6 @@ public sealed class KoronusSafetyPolicySystem : EntitySystem
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private DockingSystem _docking = default!;
     [Dependency] private OperationalDomainSystem _domains = default!;
-    [Dependency] private PullingSystem _pulling = default!;
 
     private EntityQuery<TransformComponent> _transformQuery;
     private TimeSpan _nextEnvironmentalSafetySweep;
@@ -121,8 +117,6 @@ public sealed class KoronusSafetyPolicySystem : EntitySystem
         SubscribeLocalEvent<DamageableComponent, BeforeDamageChangedEvent>(OnBeforeDamageChanged);
         SubscribeLocalEvent<StaminaComponent, BeforeStaminaDamageEvent>(OnBeforeStaminaDamage);
         SubscribeLocalEvent<PullableComponent, BeingPulledAttemptEvent>(OnBeingPulledAttempt);
-        SubscribeLocalEvent<PullableComponent, EntParentChangedMessage>(OnPulledParentChanged);
-        SubscribeLocalEvent<CarriableComponent, CarryAttemptEvent>(OnCarryAttempt);
         SubscribeLocalEvent<StrippableComponent, StripAttemptEvent>(OnStripAttempt);
         SubscribeLocalEvent<BuckleComponent, BuckleAttemptEvent>(OnBuckleAttempt);
         SubscribeLocalEvent<BuckleComponent, UnbuckleAttemptEvent>(OnUnbuckleAttempt);
@@ -652,30 +646,8 @@ public sealed class KoronusSafetyPolicySystem : EntitySystem
 
     private void OnBeingPulledAttempt(EntityUid uid, PullableComponent component, BeingPulledAttemptEvent args)
     {
-        if (!args.Cancelled && ShouldBlockPlayerTransport(args.Puller, args.Pulled))
+        if (!args.Cancelled && ShouldBlockPlayerAgainstPlayer(args.Puller, args.Pulled, KoronusSafetyRule.PlayerPulling))
             args.Cancel();
-    }
-
-    private bool ShouldBlockPlayerTransport(EntityUid source, EntityUid target)
-    {
-        if (TryComp<GhostComponent>(source, out var ghost) && ghost.CanGhostInteract)
-            return false;
-
-        var location = TryComp<BeingCarriedComponent>(target, out var carried) ? carried.Carrier : target;
-        return source != target && IsPlayerCharacter(target)
-            && TryGetGrid(location, out var grid) && IsProtectedFacility(grid);
-    }
-
-    private void OnCarryAttempt(EntityUid uid, CarriableComponent component, CarryAttemptEvent args)
-    {
-        if (!args.Cancelled && ShouldBlockPlayerTransport(args.Carrier, args.Carried))
-            args.Cancel();
-    }
-
-    private void OnPulledParentChanged(EntityUid uid, PullableComponent component, ref EntParentChangedMessage args)
-    {
-        if (component.Puller is { } puller && ShouldBlockPlayerTransport(puller, uid))
-            _pulling.TryStopPull(uid, component);
     }
 
     private void OnStripAttempt(EntityUid uid, StrippableComponent component, StripAttemptEvent args)

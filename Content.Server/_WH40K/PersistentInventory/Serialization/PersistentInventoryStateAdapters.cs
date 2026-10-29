@@ -880,14 +880,14 @@ public sealed class LabelItemStateAdapter : IItemStateAdapter
     {
         if (state.Fields.Count != 1 ||
             !state.Fields.TryGetValue("text", out var encoded) ||
-            !_entities.EntityExists(uid) ||
+            !_entities.TryGetComponent(uid, out LabelComponent? label) ||
             !TryDecode(encoded, out var text))
         {
             error = "Label state is invalid for the restored prototype.";
             return false;
         }
 
-        _labels.SetLabelText(uid, text);
+        _labels.Label(uid, text, label: label);
         error = null;
         return true;
     }

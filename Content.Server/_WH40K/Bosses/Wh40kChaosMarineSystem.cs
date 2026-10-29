@@ -263,8 +263,7 @@ public sealed partial class Wh40kChaosMarineSystem : EntitySystem
             CancelAction(uid, brain, state);
             BeginAction(uid, brain, state, MarineAttack.Transition);
             state.TransitionProtected = true;
-            brain.PendingWave = 2;
-            brain.PendingSummonCount = SummonCount(brain.PendingWave);
+            brain.PendingWave = 4;
             brain.CloseSince.Clear();
             RequestVoice(uid, brain, 90);
             Dirty(uid, state);

@@ -35,19 +35,7 @@ public sealed partial class Wh40kChaosTacticsSystem
     {
         CombatRayCount++;
         return _interaction.InRangeUnobstructed(uid, target, distance + 0.1f,
-            GetShotMask(uid));
-    }
-
-    private CollisionGroup GetShotMask(EntityUid uid)
-        => HasComp<HitscanBatteryAmmoProviderComponent>(uid) ? CollisionGroup.Opaque :
-            CollisionGroup.Impassable | CollisionGroup.BulletImpassable;
-
-    public NPCRangedCombatComponent PrepareRangedCombat(EntityUid uid, EntityUid target)
-    {
-        var ranged = EnsureComp<NPCRangedCombatComponent>(uid);
-        ranged.Target = target;
-        ranged.BulletMask = GetShotMask(uid);
-        return ranged;
+            CollisionGroup.Impassable | CollisionGroup.InteractImpassable);
     }
 
     public bool CanMoveDirectly(EntityUid uid, EntityUid target)
@@ -212,7 +200,8 @@ public sealed partial class Wh40kChaosTacticsSystem
 
         RemComp<NPCRangedCombatComponent>(uid);
         // Recreate only the aiming state; retain ammunition, weapon cooldowns and burst pauses.
-        ranged = PrepareRangedCombat(uid, target);
+        ranged = EnsureComp<NPCRangedCombatComponent>(uid);
+        ranged.Target = target;
         ranged.Status = CombatStatus.Normal;
         gun.ShootCoordinates = null;
         gun.Target = target;

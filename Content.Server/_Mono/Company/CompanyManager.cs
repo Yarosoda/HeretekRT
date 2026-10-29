@@ -25,10 +25,6 @@ public sealed partial class CompanyManager
     private ISawmill _sawmill = default!;
 
     private readonly Dictionary<ProtoId<CompanyPrototype>, HashSet<CompanyMemberRecord>> _companies = new();
-    private readonly Dictionary<ProtoId<CompanyPrototype>, HashSet<FactionJoinRequestRecord>> _joinRequests = new();
-    private Task _loading = Task.CompletedTask;
-    public Task Ready => _loading;
-    public event Action<ProtoId<CompanyPrototype>, NetUserId>? FactionChanged;
 
     public void Initialize()
     {
@@ -37,7 +33,7 @@ public sealed partial class CompanyManager
         _net.RegisterNetMessage<MsgCompanyWhitelist>();
         _net.Connected += OnConnected;
 
-        _loading = LoadCompaniesData();
+        _ = LoadCompaniesData();
     }
 
     private async Task LoadCompaniesData()
@@ -46,28 +42,18 @@ public sealed partial class CompanyManager
         sw.Start();
 
         var members = await _db.GetAllCompanyMembers();
-        var requests = await _db.GetAllFactionJoinRequests();
-        _profiles = await _db.GetFactionProfilesAsync();
-        _announcements = await _db.GetFactionAnnouncementsAsync();
-        foreach (var relation in await _db.GetFactionRelationsAsync())
-            _relations[(relation.Source, relation.Target)] = relation;
-        _relationCooldowns = await _db.GetFactionRelationCooldownsAsync();
         foreach (var proto in _proto.EnumeratePrototypes<CompanyPrototype>())
         {
             _companies.Add(proto.ID, new());
             _companies[proto.ID].UnionWith(members.Where(m => m.Company == proto.ID).ToHashSet());
-            _joinRequests.Add(proto.ID, new());
-            _joinRequests[proto.ID].UnionWith(requests.Where(r => r.Company == proto.ID).ToHashSet());
         }
 
         _sawmill.Info($"All company members data loaded in {sw.Elapsed.TotalSeconds:.2}s");
     }
 
-    private async void OnConnected(object? sender, NetChannelArgs e)
+    private void OnConnected(object? sender, NetChannelArgs e)
     {
-        await Ready;
-        if (e.Channel.IsConnected)
-            SendCompanyWhitelist(e.Channel);
+        SendCompanyWhitelist(e.Channel);
     }
 
     private async Task<HashSet<CompanyMemberRecord>> QueryCompanyMembers(ProtoId<CompanyPrototype> company)
@@ -87,11 +73,6 @@ public sealed partial class CompanyManager
         return _companies.Values.SelectMany(v => v).ToHashSet();
     }
 
-    public HashSet<FactionJoinRequestRecord> GetFactionJoinRequests(ProtoId<CompanyPrototype> company)
-    {
-        return _joinRequests.TryGetValue(company, out var requests) ? requests : new();
-    }
-
     public CompanyMemberRecord? GetCompanyMember(ProtoId<CompanyPrototype> company, NetUserId player)
     {
         if (!_companies.TryGetValue(company, out var members))
@@ -100,39 +81,20 @@ public sealed partial class CompanyManager
         return members.FirstOrNull(m => m.PlayerUserId == player);
     }
 
-    public void AddMember(NetUserId player, ProtoId<CompanyPrototype> company, FactionRole role = FactionRole.Member)
+    public async void AddMember(NetUserId player, ProtoId<CompanyPrototype> company)
     {
-        _ = AddMemberAsync(player, company, role);
-    }
-
-    public async Task<bool> AddMemberAsync(NetUserId player, ProtoId<CompanyPrototype> company, FactionRole role = FactionRole.Member)
-    {
-        await Ready;
-        if (!_companies.ContainsKey(company) || IsMember(player, company))
-            return false;
-
         await _db.AddCompanyMember(player, company);
-        await _db.SetCompanyRole(company, player, role);
 
         var member = await _db.GetCompanyMember(company, player);
         if (member != null)
-        {
             _companies[company].Add(member.Value);
-            await RemoveJoinRequest(player, company);
-        }
 
         if (_player.TryGetSessionById(player, out var session))
             SendCompanyWhitelist(session.Channel);
-
-        FactionChanged?.Invoke(company, player);
-        return member != null;
     }
 
     public bool IsAllowed(ICommonSession session, ProtoId<CompanyPrototype> company)
     {
-        if (_proto.TryIndex(company, out var managed) && managed.JoinRequired)
-            return IsMember(session.UserId, company);
-
         if (!_config.GetCVar(MonoCVars.CompanyWhitelist))
             return true;
 
@@ -152,77 +114,25 @@ public sealed partial class CompanyManager
 
         var member = members.FirstOrNull(m => m.PlayerUserId == session.UserId);
 
-        return member != null && member.Value.Role == FactionRole.Leader;
+        return member != null && member.Value.Owner;
     }
 
-    public FactionRole? GetRole(NetUserId player, ProtoId<CompanyPrototype> company)
+    public bool SetOwner(ProtoId<CompanyPrototype> company, NetUserId userId, bool owner)
     {
-        return GetCompanyMember(company, player)?.Role;
-    }
+        var cached = GetCompanyMember(company, userId);
 
-    public bool CanManage(ICommonSession session, ProtoId<CompanyPrototype> company, bool leaderOnly = false)
-    {
-        if (IsOwner(session, company))
+        if (cached is not { } member)
+            return false;
+
+        if (owner == member.Owner)
             return true;
 
-        return !leaderOnly && GetRole(session.UserId, company) == FactionRole.Officer;
-    }
+        _db.SetCompanyOwner(company, userId, owner);
 
-    public async Task<bool> RequestJoin(NetUserId player, ProtoId<CompanyPrototype> company)
-    {
-        await Ready;
-        if (!_companies.ContainsKey(company) || IsMember(player, company))
-            return false;
-
-        var added = await _db.AddFactionJoinRequest(player, company);
-        if (added)
-        {
-            var request = await _db.GetFactionJoinRequest(company, player);
-            if (request != null)
-                _joinRequests[company].Add(request.Value);
-        }
-
-        if (added)
-            FactionChanged?.Invoke(company, player);
-        return added;
-    }
-
-    public async Task<bool> RemoveJoinRequest(NetUserId player, ProtoId<CompanyPrototype> company)
-    {
-        var removed = await _db.RemoveFactionJoinRequest(player, company);
-        if (removed && _joinRequests.TryGetValue(company, out var requests))
-            requests.RemoveWhere(r => r.PlayerUserId == player);
-        if (removed)
-            FactionChanged?.Invoke(company, player);
-        return removed;
-    }
-
-    public async Task<bool> AcceptJoinRequest(ICommonSession actor, ProtoId<CompanyPrototype> company, NetUserId target)
-    {
-        if (!CanManage(actor, company) || !_joinRequests.TryGetValue(company, out var requests) ||
-            !requests.Any(r => r.PlayerUserId == target))
-            return false;
-
-        return await AddMemberAsync(target, company);
-    }
-
-    public async Task<bool> RejectJoinRequest(ICommonSession actor, ProtoId<CompanyPrototype> company, NetUserId target)
-    {
-        if (!CanManage(actor, company))
-            return false;
-        return await RemoveJoinRequest(target, company);
-    }
-
-    public async Task<bool> SetRole(ICommonSession actor, ProtoId<CompanyPrototype> company, NetUserId target, FactionRole role)
-    {
-        if (!CanManage(actor, company, leaderOnly: true) || target == actor.UserId)
-            return false;
-
-        if (GetCompanyMember(company, target) is not { } member || member.Role == FactionRole.Leader ||
-            role is not (FactionRole.Member or FactionRole.Officer))
-            return false;
-
-        return await SetMemberRoleAsync(company, target, role);
+        _companies[company].RemoveWhere(w => w.PlayerUserId == userId);
+        member.Owner = owner; // company member is struct so we got a copy here
+        _companies[company].Add(member);
+        return true;
     }
 
     public bool IsMember(NetUserId player, ProtoId<CompanyPrototype> company)
@@ -233,14 +143,12 @@ public sealed partial class CompanyManager
 
     public async Task RemoveMember(NetUserId player, ProtoId<CompanyPrototype> company)
     {
-        if (!_companies.ContainsKey(company))
-            return;
-        await _db.RemoveCompanyMember(player, company);
         _companies[company].RemoveWhere(w => w.PlayerUserId == player);
+
+        await _db.RemoveCompanyMember(player, company);
 
         if (_player.TryGetSessionById(player, out var session))
             SendCompanyWhitelist(session.Channel);
-        FactionChanged?.Invoke(company, player);
     }
 
     public HashSet<ProtoId<CompanyPrototype>> GetPlayerCompanies(NetUserId player)

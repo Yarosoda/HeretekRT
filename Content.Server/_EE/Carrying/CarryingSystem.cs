@@ -159,15 +159,8 @@ namespace Content.Server.Carrying
 
         private void OnParentChanged(EntityUid uid, CarryingComponent component, ref EntParentChangedMessage args)
         {
-            if (!IsCarryAllowed(uid, component.Carried))
-            {
-                DropCarried(uid, component.Carried);
-                return;
-            }
-
             var xform = Transform(uid);
-            if (xform.MapUid != args.OldMapId || xform.ParentUid == xform.GridUid
-                || HasComp<MapComponent>(xform.ParentUid))
+            if (xform.MapUid != args.OldMapId || xform.ParentUid == xform.GridUid)
                 return;
 
             DropCarried(uid, component.Carried);
@@ -358,21 +351,13 @@ namespace Content.Server.Carrying
             if (!Resolve(carried, ref carriedComp, false)
                 || carriedComp.CancelToken != null
                 || !HasComp<MapGridComponent>(Transform(carrier).ParentUid)
-                    && !HasComp<MapComponent>(Transform(carrier).ParentUid)
                 || HasComp<BeingCarriedComponent>(carrier)
                 || HasComp<BeingCarriedComponent>(carried)
                 || !TryComp<HandsComponent>(carrier, out var hands)
                 || hands.CountFreeHands() < carriedComp.FreeHandsRequired)
                 return false;
 
-            return IsCarryAllowed(carrier, carried);
-        }
-
-        private bool IsCarryAllowed(EntityUid carrier, EntityUid carried)
-        {
-            var attempt = new CarryAttemptEvent(carrier, carried);
-            RaiseLocalEvent(carried, attempt);
-            return !attempt.Cancelled;
+            return true;
         }
 
         public override void Update(float frameTime)
