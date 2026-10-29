@@ -58,8 +58,7 @@ public sealed partial class Wh40kChaosMarineSystem
             ClearOwned(uid, brain);
             brain.SpawnedMinions.Clear();
             brain.WavesDone = 0;
-            brain.PendingWave = 1;
-            brain.PendingSummonCount = test.SummonCount;
+            brain.PendingWave = test.SummonCount;
             test.NextCycle = Now + TimeSpan.FromSeconds(12.5);
             BeginAction(uid, brain, state, attack);
             RequestVoice(uid, brain, 70);

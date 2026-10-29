@@ -16,6 +16,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using Content.Shared._NF.Shipyard.Events;
+using Content.Shared.Mobs.Components;
 using Robust.Shared.Containers;
 using Content.Server._NF.Station.Components;
 using Content.Server.Storage.Components;
@@ -44,7 +45,6 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
     [Dependency] private EntityLookupSystem _lookup = default!;
     [Dependency] private OperationalDomainSystem _operationalDomains = default!;
     [Dependency] private ShipyardPricingSystem _vesselPricing = default!;
-    [Dependency] private ShipyardPassengerSystem _passengers = default!;
 
     public MapId? ShipyardMap { get; private set; }
     private float _shuttleIndex;
@@ -129,14 +129,14 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
     }
 
     /// <summary>
-    /// Adds a ship to the shipyard and delivers it to the local station or independent vessel.
+    /// Adds a ship to the shipyard, calculates its price, and attempts to ftl-dock it to the given station
     /// </summary>
-    /// <param name="owner">The station, vessel or console providing the delivery destination.</param>
+    /// <param name="stationUid">The ID of the station to dock the shuttle to</param>
     /// <param name="shuttlePath">The path to the shuttle file to load. Must be a grid file!</param>
     /// <param name="shuttleEntityUid">The EntityUid of the shuttle that was purchased</param>
-    public bool TryPurchaseShuttle(EntityUid owner, ResPath shuttlePath, [NotNullWhen(true)] out EntityUid? shuttleEntityUid)
+    public bool TryPurchaseShuttle(EntityUid stationUid, ResPath shuttlePath, [NotNullWhen(true)] out EntityUid? shuttleEntityUid)
     {
-        if (!_operationalDomains.TryResolveOperationalDomain(owner, out var domain)
+        if (!TryComp<StationDataComponent>(stationUid, out var stationData)
             || !TryAddShuttle(shuttlePath, out var shuttleGrid)
             || !TryComp<ShuttleComponent>(shuttleGrid, out var shuttleComponent))
         {
@@ -145,11 +145,20 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
         }
 
         var price = _pricing.AppraiseGrid(shuttleGrid.Value, null);
-        _sawmill.Info($"Shuttle {shuttlePath} was purchased at {ToPrettyString(domain.Owner)} for {price:f2}");
+        var targetGrid = _station.GetLargestGrid((stationUid, stationData));
+
+        if (targetGrid == null) //how are we even here with no station grid
+        {
+            QueueDel(shuttleGrid);
+            shuttleEntityUid = null;
+            return false;
+        }
+
+        _sawmill.Info($"Shuttle {shuttlePath} was purchased at {ToPrettyString(stationUid)} for {price:f2}");
         var ev = new ShipBoughtEvent();
         RaiseLocalEvent(shuttleGrid.Value, ev);
         //can do TryFTLDock later instead if we need to keep the shipyard map paused
-        _shuttle.TryFTLDock(shuttleGrid.Value, shuttleComponent, domain.PrimaryGrid);
+        _shuttle.TryFTLDock(shuttleGrid.Value, shuttleComponent, targetGrid.Value);
         shuttleEntityUid = shuttleGrid;
         return true;
     }
@@ -179,9 +188,9 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
     }
 
     /// <summary>
-    /// Evacuates passengers, preserves tagged items, appraises the shuttle and deletes its grid.
+    /// Checks a shuttle to make sure that it is docked to the given station, and that there are no lifeforms aboard. Then it teleports tagged items on top of the console, appraises the grid, outputs to the server log, and deletes the grid
     /// </summary>
-    /// <param name="stationUid">The ID of the station providing the selling console</param>
+    /// <param name="stationUid">The ID of the station that the shuttle is docked to</param>
     /// <param name="shuttleUid">The grid ID of the shuttle to be appraised and sold</param>
     /// <param name="consoleUid">The ID of the console being used to sell the ship</param>
     public ShipyardSaleResult TrySellShuttle(EntityUid stationUid, EntityUid shuttleUid, EntityUid consoleUid, out int bill)
@@ -206,19 +215,42 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
             return result;
         }
 
-        EntityCoordinates? passengerDestination = null;
-        foreach (var dock in _docking.GetDocks(shuttleUid))
-        {
-            if (!dock.Comp.Docked || dock.Comp.DockedWith is not { } stationDock
-                || _station.GetOwningStation(stationDock) is not { } dockedStation)
-                continue;
+        var gridDocks = _docking.GetDocks(targetGrid.Value);
+        var shuttleDocks = _docking.GetDocks(shuttleUid);
+        var isDocked = false;
 
-            passengerDestination = dockedStation == stationUid
-                ? Transform(consoleUid).Coordinates
-                : Transform(stationDock).Coordinates;
-            break;
+        foreach (var shuttleDock in shuttleDocks)
+        {
+            foreach (var gridDock in gridDocks)
+            {
+                if (shuttleDock.Comp.DockedWith == gridDock.Owner)
+                {
+                    isDocked = true;
+                    break;
+                }
+            }
+            if (isDocked)
+                break;
         }
-        _passengers.Evacuate(shuttleUid, passengerDestination);
+
+        if (!isDocked)
+        {
+            _sawmill.Warning($"shuttle is not docked to that station");
+            result.Error = ShipyardSaleError.Undocked;
+            return result;
+        }
+
+        var mobQuery = GetEntityQuery<MobStateComponent>();
+        var xformQuery = GetEntityQuery<TransformComponent>();
+
+        var charName = FoundOrganics(shuttleUid, mobQuery, xformQuery);
+        if (charName is not null)
+        {
+            _sawmill.Warning($"organics on board");
+            result.Error = ShipyardSaleError.OrganicsAboard;
+            result.OrganicName = charName;
+            return result;
+        }
 
         //just yeet and delete for now. Might want to split it into another function later to send back to the shipyard map first to pause for something
         //also superman 3 moment

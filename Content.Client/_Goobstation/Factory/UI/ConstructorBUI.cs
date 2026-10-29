@@ -49,7 +49,7 @@ public sealed partial class ConstructorBUI : BoundUserInterface
             if (item?.Metadata is ConstructionPrototype proto)
             {
                 _id = proto.ID;
-                _menu.SetRecipeInfo(proto.LocalizedName, proto.LocalizedDescription, _sprite.Frame0(proto.Icon),
+                _menu.SetRecipeInfo(proto.Name, proto.Description, _sprite.Frame0(proto.Icon),
                     proto.Type != ConstructionType.Item, true); // TODO: favourites
 
                 GenerateStepList(proto);
@@ -126,7 +126,7 @@ public sealed partial class ConstructorBUI : BoundUserInterface
                 continue;
 
             if (searching
-                && !recipe.LocalizedName.ToLowerInvariant().Contains(search))
+                && !recipe.Name.ToLowerInvariant().Contains(search))
                 continue;
 
             if (!isEmptyCategory)
@@ -143,7 +143,7 @@ public sealed partial class ConstructorBUI : BoundUserInterface
             _recipes.Add(recipe);
         }
 
-        _recipes.Sort((a, b) => string.Compare(a.LocalizedName, b.LocalizedName, StringComparison.InvariantCulture));
+        _recipes.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.InvariantCulture));
 
         var recipesList = menu.Recipes;
         recipesList.Clear();
@@ -161,10 +161,10 @@ public sealed partial class ConstructorBUI : BoundUserInterface
         return new(itemList)
         {
             Metadata = recipe,
-            Text = recipe.LocalizedName,
+            Text = recipe.Name,
             Icon = _sprite.Frame0(recipe.Icon),
             TooltipEnabled = true,
-            TooltipText = recipe.LocalizedDescription,
+            TooltipText = recipe.Description,
         };
     }
 

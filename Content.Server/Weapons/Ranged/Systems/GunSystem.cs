@@ -232,11 +232,7 @@ public sealed partial class GunSystem : SharedGunSystem
                 shotProjectiles.Add(ammoEnt);
             }
             MuzzleFlash(gunUid, muzzle, mapDirection.ToAngle(), user);
-            // Remote fire control runs only on the server; its operator has no predicted shot audio.
-            if (HasComp<FireControllableComponent>(gunUid))
-                Audio.PlayPvs(sound ?? gun.SoundGunshotModified, gunUid);
-            else
-                Audio.PlayPredicted(sound ?? gun.SoundGunshotModified, gunUid, user);
+            Audio.PlayPredicted(sound ?? gun.SoundGunshotModified, gunUid, user);
         }
     }
 

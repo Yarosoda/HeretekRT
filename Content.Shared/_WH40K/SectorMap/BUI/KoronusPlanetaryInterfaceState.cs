@@ -115,7 +115,6 @@ public sealed class KoronusLandingSiteState
     public bool Enabled;
     public bool Occupied;
     public bool ReservedByCurrentShuttle;
-    public TimeSpan? RefreshAt;
 
     public KoronusLandingSiteState(
         string id,
@@ -123,8 +122,7 @@ public sealed class KoronusLandingSiteState
         Vector2 size,
         bool enabled,
         bool occupied,
-        bool reservedByCurrentShuttle,
-        TimeSpan? refreshAt = null)
+        bool reservedByCurrentShuttle)
     {
         Id = id;
         Name = name;
@@ -132,6 +130,5 @@ public sealed class KoronusLandingSiteState
         Enabled = enabled;
         Occupied = occupied;
         ReservedByCurrentShuttle = reservedByCurrentShuttle;
-        RefreshAt = refreshAt;
     }
 }

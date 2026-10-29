@@ -26,6 +26,8 @@
     - BoxSurvivalMonoOxygenExtended
     - FoodSnackImperialHardtack
     - DrinkWaterBottleFull
+    wallet:
+    - SpaceCash250
 
 - type: jobIcon
   parent: JobIcon

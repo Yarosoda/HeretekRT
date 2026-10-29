@@ -60,7 +60,7 @@ public sealed partial class BankSystem
             _log.Info($"{player} has no bank account");
             ConsolePopup(player, Loc.GetString("bank-atm-menu-no-bank"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -72,7 +72,7 @@ public sealed partial class BankSystem
         {
             ConsolePopup(args.Actor, Loc.GetString("bank-insufficient-funds"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -83,7 +83,7 @@ public sealed partial class BankSystem
         {
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-transaction-denied"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -97,7 +97,7 @@ public sealed partial class BankSystem
         var stackPrototype = _prototypeManager.Index<StackPrototype>(component.CashType);
         _stackSystem.Spawn(args.Amount, stackPrototype, uid.ToCoordinates());
 
-        SetBankAtmState(uid, args.UiKey, component, player, state);
+        _uiSystem.SetUiState(uid, args.UiKey, state);
     }
 
     private void OnDeposit(EntityUid uid, BankATMComponent component, BankDepositMessage args)
@@ -117,7 +117,7 @@ public sealed partial class BankSystem
             _log.Info($"{player} has no bank account");
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-no-bank"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -131,7 +131,7 @@ public sealed partial class BankSystem
             _log.Info($"ATM has no cash slot");
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-no-bank"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -142,7 +142,7 @@ public sealed partial class BankSystem
             _log.Info($"ATM cash slot contains bad stack prototype");
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-wrong-cash"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -152,7 +152,7 @@ public sealed partial class BankSystem
             _log.Info($"{stackComponent.StackTypeId} is not {component.CashType}");
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-wrong-cash"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -162,6 +162,7 @@ public sealed partial class BankSystem
             if (!float.IsFinite(taxCoeff) || taxCoeff <= 0.0f)
                 continue;
             var tax = (int)Math.Floor(originalDeposit * taxCoeff);
+            TrySectorDeposit(account, tax, LedgerEntryType.AtmTax); // Mono BlackMarketAtmTax->AtmTax
             deposit -= tax; // Charge the user whether or not the deposit went through.
         }
 
@@ -172,16 +173,11 @@ public sealed partial class BankSystem
         {
             ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-transaction-denied"));
             PlayDenySound(uid, component);
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
         ConsolePopup(args.Actor, Loc.GetString("bank-atm-menu-deposit-successful"));
-        foreach (var (account, coefficient) in component.TaxAccounts)
-        {
-            if (float.IsFinite(coefficient) && coefficient > 0)
-                TrySectorDeposit(account, (int) Math.Floor(originalDeposit * coefficient), LedgerEntryType.AtmTax);
-        }
         PlayConfirmSound(uid, component);
         _adminLogger.Add(LogType.ATMUsage, LogImpact.Low, $"{ToPrettyString(player):actor} deposited {deposit} into {ToPrettyString(component.Owner)}");
 
@@ -192,7 +188,7 @@ public sealed partial class BankSystem
 
         // yeet and delete the stack in the cash slot after success
         _containerSystem.CleanContainer(cashSlot);
-        SetBankAtmState(uid, args.UiKey, component, player, state);
+        _uiSystem.SetUiState(uid, args.UiKey, state);
         return;
     }
 
@@ -220,7 +216,7 @@ public sealed partial class BankSystem
             else
                 state.Deposit = deposit;
 
-            SetBankAtmState(uid, uiComp.Key, component, player, state);
+            _uiSystem.SetUiState(uid, uiComp.Key, state);
         }
     }
 
@@ -238,7 +234,7 @@ public sealed partial class BankSystem
         if (!TryComp<BankAccountComponent>(player, out var bank))
         {
             _log.Info($"{player} has no bank account");
-            SetBankAtmState(uid, args.UiKey, component, player, state);
+            _uiSystem.SetUiState(uid, args.UiKey, state);
             return;
         }
 
@@ -246,7 +242,7 @@ public sealed partial class BankSystem
         state.Savings = GetEntSavings(player);
 
         state.Enabled = true;
-        SetBankAtmState(uid, args.UiKey, component, player, state);
+        _uiSystem.SetUiState(uid, args.UiKey, state);
     }
 
     private void GetInsertedCashAmount(BankATMComponent component, out int amount)

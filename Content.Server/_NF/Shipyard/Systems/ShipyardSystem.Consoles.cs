@@ -52,7 +52,6 @@ using Robust.Shared.Player;
 using Robust.Server.Player;
 using Content.Shared._Mono.Ships.Components;
 using Content.Shared._Mono.Shipyard;
-using Content.Shared._WH40K.OperationalDomain;
 using Content.Shared.Tag;
 using Robust.Shared.Timing;
 using Content.Server._Mono.Detection;
@@ -147,7 +146,7 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
         if (vessel.Price <= 0)
             return;
 
-        if (!_operationalDomains.TryResolveOperationalDomain(shipyardConsoleUid, out var purchasingDomain))
+        if (_station.GetOwningStation(shipyardConsoleUid) is not { Valid: true } station)
         {
             ConsolePopup(player, Loc.GetString("shipyard-console-invalid-station"));
             PlayDenySound(player, shipyardConsoleUid, component);
@@ -174,7 +173,7 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
             return;
         }
 
-        if (!TryPurchaseShuttle(purchasingDomain.Owner, vessel.ShuttlePath, out var shuttleUidOut))
+        if (!TryPurchaseShuttle(station, vessel.ShuttlePath, out var shuttleUidOut))
         {
             PlayDenySound(player, shipyardConsoleUid, component);
             return;
@@ -414,10 +413,8 @@ public sealed partial class ShipyardSystem : SharedShipyardSystem
                 _records.CreateGeneralRecord(shuttleStation.Value, targetId, profile.Name, profile.Age, profile.Species, profile.Gender, $"Captain", fingerprintComponent!.Fingerprint, dnaComponent!.DNA, profile, stationRec!);
             }
         }
-        if (shuttleStation is { } newStation)
-            _records.Synchronize(newStation);
-        if (purchasingDomain.Kind == OperationalDomainKind.Station)
-            _records.Synchronize(purchasingDomain.Owner);
+        _records.Synchronize(shuttleStation!.Value);
+        _records.Synchronize(station);
 
         EntityManager.AddComponents(shuttleUid, vessel.AddComponents);
 

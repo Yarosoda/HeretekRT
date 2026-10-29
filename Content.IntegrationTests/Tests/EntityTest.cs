@@ -34,10 +34,9 @@ namespace Content.IntegrationTests.Tests
             var prototypeMan = server.ResolveDependency<IPrototypeManager>();
             var mapSystem = entityMan.System<SharedMapSystem>();
 
-            string[] protoIds = null;
             await server.WaitPost(() =>
             {
-                protoIds = prototypeMan
+                var protoIds = prototypeMan
                     .EnumeratePrototypes<EntityPrototype>()
                     .Where(p => !p.Abstract)
                     .Where(p => !pair.IsTestPrototype(p))
@@ -45,50 +44,42 @@ namespace Content.IntegrationTests.Tests
                     .Where(p => !p.Components.ContainsKey("RoomFill")) // This comp can delete all entities, and spawn others
                     .Where(p => p.Categories.All(x => x.ID != SpawnerCategory)) // mono
                     .Select(p => p.ID)
-                    .ToArray();
+                    .ToList();
+
+                foreach (var protoId in protoIds)
+                {
+                    mapSystem.CreateMap(out var mapId);
+                    var grid = mapManager.CreateGridEntity(mapId);
+                    // TODO: Fix this better in engine.
+                    mapSystem.SetTile(grid.Owner, grid.Comp, Vector2i.Zero, new Tile(1));
+                    var coord = new EntityCoordinates(grid.Owner, 0, 0);
+                    SpawnEntity(entityMan, protoId, coord);
+                }
             });
 
-            // Each prototype runs on its own map. Bound simultaneous maps so their physics trees
-            // and navigation data fit in CI memory; every prototype still receives all 450 ticks.
-            foreach (var batch in protoIds.Chunk(1024))
+            await server.WaitRunTicks(450); // 15 seconds, enough to trigger most update loops
+
+            await server.WaitPost(() =>
             {
-                await server.WaitPost(() =>
+                static IEnumerable<(EntityUid, TComp)> Query<TComp>(IEntityManager entityMan)
+                    where TComp : Component
                 {
-                    foreach (var protoId in batch)
+                    var query = entityMan.AllEntityQueryEnumerator<TComp>();
+                    while (query.MoveNext(out var uid, out var meta))
                     {
-                        mapSystem.CreateMap(out var mapId);
-                        var grid = mapManager.CreateGridEntity(mapId);
-                        // TODO: Fix this better in engine.
-                        mapSystem.SetTile(grid.Owner, grid.Comp, Vector2i.Zero, new Tile(1));
-                        var coord = new EntityCoordinates(grid.Owner, 0, 0);
-                        SpawnEntity(entityMan, protoId, coord);
+                        yield return (uid, meta);
                     }
-                });
+                }
 
-                await server.WaitRunTicks(450); // 15 seconds, enough to trigger most update loops
-
-                await server.WaitPost(() =>
+                var entityMetas = Query<MetaDataComponent>(entityMan).ToList();
+                foreach (var (uid, meta) in entityMetas)
                 {
-                    static IEnumerable<(EntityUid, TComp)> Query<TComp>(IEntityManager entityMan)
-                        where TComp : Component
-                    {
-                        var query = entityMan.AllEntityQueryEnumerator<TComp>();
-                        while (query.MoveNext(out var uid, out var meta))
-                        {
-                            yield return (uid, meta);
-                        }
-                    }
+                    if (!meta.EntityDeleted)
+                        entityMan.DeleteEntity(uid);
+                }
 
-                    var entityMetas = Query<MetaDataComponent>(entityMan).ToList();
-                    foreach (var (uid, meta) in entityMetas)
-                    {
-                        if (!meta.EntityDeleted)
-                            entityMan.DeleteEntity(uid);
-                    }
-
-                    Assert.That(entityMan.EntityCount, Is.Zero);
-                });
-            }
+                Assert.That(entityMan.EntityCount, Is.Zero);
+            });
 
             await pair.CleanReturnAsync();
         }

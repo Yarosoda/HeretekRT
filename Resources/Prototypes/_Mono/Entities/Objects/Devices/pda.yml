@@ -9,7 +9,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -17,7 +16,7 @@
     - BountyContractsCartridge
     - AstroNavCartridge
   - type: Sprite
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     layers:
     - map: [ "enum.PdaVisualLayers.Base" ]
       state: "pda"
@@ -30,7 +29,7 @@
       shader: "unshaded"
       visible: false
   - type: Icon
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     state: pda
 
 - type: entity
@@ -50,8 +49,7 @@
     showControl: true
     isEnabled: true
     attachedToSuit: true # Mono
-  - type: Icon
-    state: pda-ussprifleman
+
 
 - type: entity
   parent: BaseUSSPPDA
@@ -70,8 +68,6 @@
     showControl: true
     isEnabled: true
     attachedToSuit: true # Mono
-  - type: Icon
-    state: pda-usspsergeant
 
 - type: entity
   parent: BaseUSSPPDA
@@ -90,9 +86,6 @@
     showControl: true
     isEnabled: true
     attachedToSuit: true # Mono
-
-  - type: Icon
-    state: pda-usspcommissar
 
 #TSF
 
@@ -133,7 +126,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -159,7 +151,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -167,7 +158,7 @@
     - BountyContractsCartridge
     - AstroNavCartridge
   - type: Sprite
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     layers:
     - map: [ "enum.PdaVisualLayers.Base" ]
       state: "pda"
@@ -180,7 +171,7 @@
       shader: "unshaded"
       visible: false
   - type: Icon
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     state: pda
 
 - type: entity
@@ -205,8 +196,6 @@
   - type: StealTarget
     stealGroup:
     - PDVPDAs
-  - type: Icon
-    state: pda-rakhshan
 
 - type: entity
   parent: BasePDVPDA
@@ -229,7 +218,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - LedgerCartridge
     - CrewManifestCartridge
@@ -239,8 +227,6 @@
     - AstroNavCartridge
   - type: PdaBorderColor
     borderColor: "#533980"
-  - type: Icon
-    state: pda-grand-vizier
 
 - type: entity
   parent: BasePDVPDA
@@ -269,8 +255,6 @@
     - AstroNavCartridge
   - type: PdaBorderColor
     borderColor: "#533980"
-  - type: Icon
-    state: pda-grand-vizier
 
 - type: entity
   parent: BasePDVPDA
@@ -299,8 +283,6 @@
     - AstroNavCartridge
   - type: PdaBorderColor
     borderColor: "#533980"
-  - type: Icon
-    state: pda-grand-vizier
 
 - type: entity
   parent: BasePDVPDA
@@ -323,7 +305,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - LedgerCartridge
     - CrewManifestCartridge
@@ -333,8 +314,7 @@
     - AstroNavCartridge
   - type: PdaBorderColor
     borderColor: "#EEEEEE"
-  - type: Icon
-    state: pda-tarkhan
+
 
 - type: entity
   parent: BasePDVPDA
@@ -355,8 +335,7 @@
     attachedToSuit: true # Mono
   - type: PdaBorderColor
     borderColor: "#9c8245"
-  - type: Icon
-    state: pda-asvaran
+
 
 - type: entity
   parent: BasePDVPDA
@@ -377,8 +356,6 @@
     attachedToSuit: true # Mono
   - type: PdaBorderColor
     borderColor: "#9c8245"
-  - type: Icon
-    state: pda-rakhshan
 
 - type: entity
   parent: BasePDVPDA
@@ -398,9 +375,6 @@
     isEnabled: true
     attachedToSuit: true # Mono
 
-  - type: Icon
-    state: pda-denasvar
-
 # Viper Group
 
 - type: entity
@@ -413,7 +387,6 @@
     preinstalled:
     - Wh40kPlayerCartridge
     - Wh40kPartyCartridge
-    - Wh40kFactionCartridge
     - Wh40kClassCartridge
     - CrewManifestCartridge
     - NotekeeperCartridge
@@ -421,7 +394,7 @@
     - BountyContractsCartridge
     - AstroNavCartridge
   - type: Sprite
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     layers:
     - map: [ "enum.PdaVisualLayers.Base" ]
       state: "pda"
@@ -434,7 +407,7 @@
       shader: "unshaded"
       visible: false
   - type: Icon
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     state: pda
 
 - type: entity
@@ -457,8 +430,6 @@
   - type: PdaBorderColor
     borderColor: "#6b0000"
     accentVColor: "#d9a200"
-  - type: Icon
-    state: pda-viperlow
 
 - type: entity
   parent: BaseVGPDA
@@ -480,8 +451,6 @@
   - type: PdaBorderColor
     borderColor: "#202020"
     accentVColor: "#6b0000"
-  - type: Icon
-    state: pda-viperhigh
 
 - type: entity
   parent: VGLieutenantPDA
@@ -507,7 +476,7 @@
     - BountyContractsCartridge
     - AstroNavCartridge
   - type: Sprite
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     layers:
     - map: [ "enum.PdaVisualLayers.Base" ]
       state: "pda-mieyo"
@@ -520,7 +489,7 @@
       shader: "unshaded"
       visible: false
   - type: Icon
-    sprite: _WH40K/Objects/Devices/pda.rsi
+    sprite: _Mono/Objects/Devices/pda.rsi
     state: pda-mieyo
   - type: Appearance
     appearanceDataInit:
